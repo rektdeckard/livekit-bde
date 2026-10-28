@@ -164,3 +164,144 @@
     background-size: 12px 12px;
   }
 }
+
+@keyframes dk-blink {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Irregular, so a row of candles never flickers in sync. */
+@keyframes dk-flicker {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scaleY(1) skewX(0deg);
+  }
+  20% {
+    opacity: 0.85;
+    transform: scaleY(0.92) skewX(-3deg);
+  }
+  45% {
+    opacity: 1;
+    transform: scaleY(1.06) skewX(2deg);
+  }
+  70% {
+    opacity: 0.9;
+    transform: scaleY(0.96) skewX(-1deg);
+  }
+}
+
+/*
+ * Candle glow — a warm, flickering light behind any element. See `<CandleGlow>`.
+ *
+ * Every knob is a custom property, so a theme, a section, or a single element can
+ * re-tune it by overriding the variable. Lighting up waits `--candle-handoff` so a
+ * neighbor has time to fade out first; going dark is immediate.
+ */
+
+:root {
+  --candle-color: var(--dk-color-pumpkin-500);
+  --candle-size: 22px; /* how far the glow spreads past the element */
+  --candle-intensity: 0.75; /* 0–1, strength of the glow at its center */
+  --candle-flicker: 0.5; /* 0–1, how much the flame wavers */
+  --candle-flicker-speed: 1800ms; /* one flicker cycle */
+  --candle-fade-in: 600ms;
+  --candle-fade-out: 350ms;
+  --candle-handoff: 200ms; /* delay before lighting, so the previous candle can go out */
+}
+
+@layer components {
+  .dk-candle {
+    position: relative;
+    isolation: isolate;
+    transition-property: color, background-color, border-color;
+    transition-duration: var(--candle-fade-out);
+    transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
+  }
+
+  .dk-candle[data-lit] {
+    transition-duration: var(--candle-fade-in);
+    transition-delay: var(--candle-handoff);
+    transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .dk-candle-glow {
+    position: absolute;
+    inset: calc(var(--candle-size) * -1);
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0;
+    scale: 0.7;
+    transition-property: opacity, scale;
+    transition-duration: var(--candle-fade-out);
+    transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
+  }
+
+  .dk-candle[data-lit] > .dk-candle-glow {
+    opacity: 1;
+    scale: 1;
+    transition-duration: var(--candle-fade-in);
+    transition-delay: var(--candle-handoff);
+    transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  /* The flame itself, so flickering never fights the lit/unlit transition above. */
+  .dk-candle-glow::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: radial-gradient(
+      closest-side,
+      color-mix(in oklch, var(--candle-color) calc(var(--candle-intensity) * 100%), transparent),
+      transparent
+    );
+    animation: dk-candle-flicker var(--candle-flicker-speed) ease-in-out infinite;
+    animation-delay: var(--candle-seed, 0ms);
+    animation-play-state: paused;
+  }
+
+  .dk-candle[data-lit] > .dk-candle-glow::before {
+    animation-play-state: running;
+  }
+}
+
+@keyframes dk-candle-flicker {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  23% {
+    opacity: calc(1 - var(--candle-flicker) * 0.45);
+    transform: scale(calc(1 - var(--candle-flicker) * 0.07));
+  }
+  41% {
+    opacity: calc(1 - var(--candle-flicker) * 0.1);
+    transform: scale(calc(1 + var(--candle-flicker) * 0.06));
+  }
+  67% {
+    opacity: calc(1 - var(--candle-flicker) * 0.32);
+    transform: scale(calc(1 - var(--candle-flicker) * 0.03));
+  }
+  82% {
+    opacity: 1;
+    transform: scale(calc(1 + var(--candle-flicker) * 0.04));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dk-candle,
+  .dk-candle-glow {
+    transition-duration: 0ms !important;
+    transition-delay: 0ms !important;
+  }
+  .dk-candle-glow::before {
+    animation: none;
+  }
+}
